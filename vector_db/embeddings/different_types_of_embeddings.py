@@ -5,6 +5,7 @@ from sentence_transformers import SentenceTransformer
 from PIL import Image
 import torch
 import torchvision.models as models
+from torchvision.models import ResNet18_Weights
 import torchvision.transforms as transforms
 from networkx import karate_club_graph, spring_layout
 from node2vec import Node2Vec
@@ -38,7 +39,7 @@ def sentence_embeddings():
 def image_embeddings():
     # ResNet18 is a convolutional neural network architecture
     # It's designed to handle the vanishing gradient problem in deep networks
-    model = models.resnet18(pretrained=True)
+    model = models.resnet18(weights=ResNet18_Weights.DEFAULT)  # models.resnet18(pretrained=True)
     # pretrained=True: Uses weights pre-trained on ImageNet
     model = torch.nn.Sequential(*(list(model.children())[:-1]))  # Remove last fully connected layer
     model.eval()
@@ -51,8 +52,9 @@ def image_embeddings():
         transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
     ])
     
-    img = Image.open("2_vector_db/1.jpg")  
-    img_tensor = transform(img).unsqueeze(0)
+    img = Image.open("../1.jpg") 
+    img_tensor = torch.tensor(transform(img)) #.unsqueeze(0)  # Add batch dimension
+    img_tensor = img_tensor.unsqueeze(0)  # Add batch dimension
     
     with torch.no_grad():
         embedding = model(img_tensor).squeeze()
@@ -82,7 +84,7 @@ def graph_embeddings():
 def audio_embeddings():
     # This uses Mel-frequency cepstral coefficients (MFCCs)
     # MFCCs are commonly used features in speech and audio processing
-    audio_path = "2_vector_db/1.wav"  # Replace with actual audio path
+    audio_path = "../1.wav"  # Replace with actual audio path
     y, sr = librosa.load(audio_path)
     mfccs = librosa.feature.mfcc(y=y, sr=sr, n_mfcc=13)
     # Parameters:

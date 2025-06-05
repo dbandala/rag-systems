@@ -3,6 +3,7 @@ import os
 from dotenv import load_dotenv
 from pydantic import SecretStr
 
+from langchain import hub
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_community.vectorstores import FAISS
 
@@ -10,6 +11,11 @@ from langchain_text_splitters.character import RecursiveCharacterTextSplitter
 
 from langchain_openai import OpenAIEmbeddings
 from langchain_openai.chat_models import ChatOpenAI
+
+from langchain_core.output_parsers import StrOutputParser
+from langchain_core.runnables import RunnablePassthrough
+
+from langchain_core.prompt_values import PromptValue
 
 
 
@@ -46,10 +52,31 @@ llm = ChatOpenAI(
     temperature=0.0  # Set temperature to 0 for deterministic responses
 )
 
+# Create a RetrievalQA chain with the retriever and LLM
+# this is legacy use
 qa_chain = RetrievalQA.from_llm(llm=llm, retriever=retriever)
-
-
 query = "What is the main topic of the document?"
 response = qa_chain.invoke(query)
 print(response, "\n\n")
 
+
+# This is the new way to use RetrievalQA with a retriever with LCEL
+
+def format_docs(docs):
+    return "\n\n".join(doc.page_content for doc in docs)
+
+
+prompt = hub.pull("rlm/rag-prompt")
+
+qa_chain = (
+    {
+        "context": vectorstore.as_retriever() | format_docs,
+        "question": RunnablePassthrough(),
+    }
+    | prompt
+    | llm
+    | StrOutputParser()
+)
+
+response = qa_chain.invoke(query)
+print(response, "\n\n")
