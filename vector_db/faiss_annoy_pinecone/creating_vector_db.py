@@ -3,6 +3,8 @@ from sentence_transformers import SentenceTransformer
 import os
 from dotenv import load_dotenv
 
+from pinecone import Vector
+
 load_dotenv()
 
 try:
@@ -34,7 +36,8 @@ try:
 
     # Check if index already exists
     existing_indexes = pc.list_indexes()
-    if index_name not in existing_indexes:
+    existing_index_names = [idx.name for idx in existing_indexes]
+    if index_name not in existing_index_names:
         # Create the index
         pc.create_index(
             name=index_name,
@@ -54,7 +57,14 @@ try:
     print(f"Connected to index: {index_name}")
 
     # Prepare the data for insertion (ID and vector pairs)
-    vector_data = [(str(i), embeddings[i].tolist(), {"text": texts[i]}) for i in range(len(embeddings))]
+    vector_data = [
+        Vector(
+            id= str(i),
+            values= embeddings[i].tolist(),
+            metadata= {"text": texts[i]}
+        )
+        for i in range(len(embeddings))
+    ]
 
     # Insert vectors into Pinecone
     index.upsert(vectors=vector_data)
